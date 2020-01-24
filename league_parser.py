@@ -4,11 +4,7 @@ import pandas as pd
 from lxml import html
 
 from scraper import Scraper
-
-from datetime import datetime, timedelta
-
-import pandas as pd
-from lxml import html
+from datetime_parser import parse_datetime
 
 class LeagueParser:
     """Инструмент для парсинга html-страницы лиги в pandas-таблицу.
@@ -23,7 +19,7 @@ class LeagueParser:
         self.league_url = league_url
         self.league_table = None
 
-    async def parse_by_raw_data(self, raw_data):
+    async def parse_by_raw_data(self, raw_data, encoding='utf-8'):
         """Превращает сырые данные (если они корректны) в удобную для работы
         pandas-таблицу. Заполняет поля self.live_urls и self.pre_urls.
 
@@ -39,11 +35,14 @@ class LeagueParser:
                 datetime : `pandas datetime`, дата и время матча
                 events: `str`, суть url матча
         """
-        self.raw_data = raw_data
+        if isinstance(raw_data, bytes):
+            self.data = raw_data.decode(encoding)
+        elif isinstance(raw_data, str):
+            self.data = raw_data
 
-        self.league_page = html.fromstring(self.raw_data.decode('utf-8'))
+        self.league_page = html.fromstring(self.data)
         try:
-            self.league_table = pd.read_html(self.raw_data)[0]
+            self.league_table = pd.read_html(self.data)[0]
         except:
             print('[!] There is no league table %s' % self.league_url)
             return
@@ -60,27 +59,14 @@ class LeagueParser:
             'Unnamed: 0': 'datetime',
             'СОБЫТИЯ': 'events'}, inplace=True)
 
-        today_s = datetime.now().strftime('%Y-%m-%d')
-        tomorrow_s = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         for j, i in enumerate(self.league_table.datetime):
-            if 'Live' in i:
-                self.league_table.datetime[j] = pd.to_datetime(datetime.now())
-            elif 'Сегодня' in i:
-                time_s = i.replace('\n', '').split()[-1]
-                datetime_s = '%s %s' % (today_s, time_s)
-                self.league_table.datetime[j] = pd.to_datetime(datetime_s)
-            elif 'Завтра' in i:
-                time_s = i.replace('\n', '').split()[-1]
-                datetime_s = '%s %s' % (tomorrow_s, time_s)
-                self.league_table.datetime[j] = pd.to_datetime(datetime_s)
-            else:
-                self.league_table.datetime[j] = pd.to_datetime(self.league_table.datetime[j])
+            self.league_table.datetime[j] = parse_datetime(self.league_table.datetime[j])
 
         self.league_table.datetime += pd.to_timedelta(3, unit='h')
         self.league_table['events'] = self.live_urls + self.pre_urls
-        self.league_table = self.league_table[self.league_table.columns.values[[0,2]]]
+        # self.league_table = self.league_table[self.league_table.columns.values[[0,2]]]
 
-        return self.league_table
+        return self.league_table[['datetime', 'events']]
 
     async def parse_by_URL(self):
         """Загружает сырые данные посредством Scraper.get_raw_data(self.league_url)
