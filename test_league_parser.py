@@ -13,7 +13,7 @@ class TestLeagueParser:
         data = self.get_data()
 
         lp = LeagueParser('https://www.oddsfan.ru/sport/soccer/country/israel/league/4182')
-        lt = await lp.parse_by_raw_data(data)
+        lt = await lp.parse(data)
 
         datetimes = (
             '2020-01-25 16:00:00',
