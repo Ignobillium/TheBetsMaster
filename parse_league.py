@@ -5,10 +5,15 @@ from cron_worker import CronWorker
 from scraper import Scraper
 
 from parse_live import parse_live
+from _config import config
 
 
-def generate_prematch_task(prematch_url):
-    return "echo parsing %s" % prematch_url
+def generate_prematch_task(match_name):
+    task = '''cd %s && python3 %s --findlive %s''' % (
+        config['api']['path'],
+        config['api']['prog'],
+        match_name.replace(' ', '_'))
+    return task
 
 async def parse_league(league_url, cron=None):
     print('[ ] parsing league %s'  % league_url)
@@ -35,7 +40,8 @@ async def parse_league(league_url, cron=None):
         elif 'prematch' in url:
             print('[i] processing prematch %s' % url)
 
-            cron.pushTask(generate_prematch_task(url))
+            match_name = lp.get_match_name(url)
+            cron.pushTask(generate_prematch_task(match_name))
             cron.pushComment(url)
             cron.pushDatetime(datetime_)
             cron.commit()

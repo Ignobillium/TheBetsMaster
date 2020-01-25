@@ -20,6 +20,9 @@ class LeagueParser:
         self.pre_urls = None
         self.live_urls = None
 
+    def get_match_name(self, match_url):
+        return match_url
+
     async def parse(self, raw_data, encoding='utf-8'):
         """Превращает сырые данные (если они корректны) в удобную для работы
         pandas-таблицу. Заполняет поля self.live_urls и self.pre_urls.
@@ -64,6 +67,7 @@ class LeagueParser:
             self.league_table.datetime[j] = parse_datetime(self.league_table.datetime[j])
 
         self.league_table.datetime += pd.to_timedelta(3, unit='h')
+        self.league_table['names'] = self.league_table['events']
         self.league_table['events'] = self.live_urls + self.pre_urls
         # self.league_table = self.league_table[self.league_table.columns.values[[0,2]]]
 
