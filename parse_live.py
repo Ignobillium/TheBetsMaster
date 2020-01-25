@@ -15,9 +15,7 @@ class ParseLiveStandaloneV:
         'ended'
     )
 
-    gs = GeckoScraper()
-
-async def parse_live(live_url, scrap_method=ParseLiveStandaloneV.gs.get_source,
+async def parse_live(live_url, scrap_method=Scraper.get_raw_data,
 dbw=ParseLiveStandaloneV.dbw, dt=10):
     # End Of Match
     def eom(mp):
@@ -32,10 +30,9 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         iteration += 1
         print('[i] iteration %d [%s]' % (iteration, live_url))
         # await ??
-        await dbw.write_data(mp)
+        asyncio.get_event_loop().create_task(dbw.write_data(mp))
 
         await asyncio.sleep(dt)
 
         raw_data = await scrap_method(live_url)
-        t0 = datetime.now()
         mp = MatchParser(raw_data)

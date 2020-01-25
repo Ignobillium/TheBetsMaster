@@ -50,7 +50,7 @@ class MatchParser:
         ----------
         match_name : имя матча (удивительно (восхитительно (как легко свою жизнь ...)))
         """
-        return '%s vs %s' % (team1, team2)
+        return '%s - %s' % (team1, team2)
 
     @staticmethod
     def get_current_score(page):
