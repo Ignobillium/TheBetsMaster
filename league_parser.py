@@ -17,6 +17,8 @@ class LeagueParser:
         """
         self.league_url = league_url
         self.league_table = None
+        self.pre_urls = None
+        self.live_urls = None
 
     async def parse(self, raw_data, encoding='utf-8'):
         """Превращает сырые данные (если они корректны) в удобную для работы

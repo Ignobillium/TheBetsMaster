@@ -219,7 +219,12 @@ class MatchParser:
 
             for bookie in ['Fonbet', 'LigaStavok']:
                 if bookie in self.hda_k.index:
-                    cols = self.hda_k.loc[bookie].index.values
+                    cols = [
+                        '%s_%s' % (
+                            odd,
+                            bookie)
+                        for odd in self.hda_k.loc[bookie].index.values
+                        ]
                     data = self.hda_k.loc[bookie].values.reshape((-1, len(cols)))
                     self._match_table[cols] = pd.DataFrame(columns=cols, data=data, index=[1])
 
