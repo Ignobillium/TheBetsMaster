@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 
 from match_parser import MatchParser
 from gecko_scraper import GeckoScraper
+from api import TBMApi
 
 
 async def _findlive_lemma(_gs, match_name):
@@ -36,15 +37,20 @@ async def _findlive_lemma(_gs, match_name):
     return _gs.driver.current_url
 
 
-async def findlive(_gs, match_name):
-    current_url = _gs.driver.current_url
+async def findlive(match_name):
+    _gs = GeckoScraper()
+
     try:
         live_url = await _findlive_lemma(_gs, match_name)
     except:
-        if _gs.driver.current_url != current_url:
+        if 'live' in _gs.driver.current_url:
             live_url = _gs.driver.current_url
+            api = TBMApi()
+            api.parse(live_url)
         else:
-            print('НЕ ПОЛУЧИЛОСЬ')
+            print('НЕ ПОЛУЧИЛОСЬ НАЙТИ live ДЛЯ %s' % match_name)
             live_url = None
 
-        return live_url
+    _gs.quit()
+
+    return live_url

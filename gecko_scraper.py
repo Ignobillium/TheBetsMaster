@@ -24,7 +24,12 @@ class GeckoScraper:
         self.tabs[self.current_url] = self.current_tab
 
     def __del__(self):
+        if self.driver is not None:
+            self.driver.quit()
+
+    def quit(self):
         self.driver.quit()
+        self.driver = None
 
     async def new_tab(self, url):
         if url in self.tabs.keys():
