@@ -17,7 +17,9 @@ def generate_prematch_task(match_name):
 
 async def parse_league(league_url, cron=None):
     print('[ ] parsing league %s'  % league_url)
+    print('[ ] obtainig league data %s' % league_url)
     raw_data = await Scraper.get_raw_data(league_url)
+    print('[ ] league data obtaied; len = %s; %s' % (len(raw_data), league_url))
 
     lp = LeagueParser(league_url)
     lt = await lp.parse(raw_data)

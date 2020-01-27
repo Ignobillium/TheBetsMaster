@@ -4,15 +4,23 @@ import argparse
 
 # TBM = TheBetsMaster
 class TBMApi:
-    def __init__(self, port=15555):
+    def __init__(self, port=15555, gecko_port=15666):
         self.port = port
+        self.gecko_port = gecko_port
 
     @staticmethod
     def send_request(request, port):
+        if isinstance(request, bytes):
+            req = request
+        elif isinstance(request, str):
+            req = request.encode()
+
         try:
             sock = socket.socket()
             sock.connect(('localhost', port))
-            sock.send(request)
+            sock.send(req)
+        except:
+            print('[!] An exception occurs while sending request =(')
         finally:
             sock.close()
 
@@ -23,7 +31,7 @@ class TBMApi:
         TBMApi.send_request('deltask %s' % task, self.port)
 
     def findlive(self, match_name):
-        TBMApi.send_request('findlive %s' % match_name, self.port)
+        TBMApi.send_request('findlive %s' % match_name, self.gecko_port)
 
 def init_argparser():
     argparser = argparse.ArgumentParser()

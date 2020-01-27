@@ -1,7 +1,17 @@
 import asyncio
+import logging
+
+import argparse
 
 from gecko_scraper import GeckoScraper
 from findlive import findlive
+from _config import config
+
+
+def init_argparse():
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--findlive', action='store')
+    return argparser
 
 
 async def handle_request(reader, writer):
@@ -19,25 +29,35 @@ async def handle_request(reader, writer):
         loop.create_task(findlive(param))
 
 
-async def main():
-    server = await asyncio.start_server(
-        handle_request, '127.0.0.1', 15666)
-
-    addr = server.sockets[0].getsockname()
-    print(f'Serving on {addr}')
-
-    async with server:
-        await server.serve_forever()
-
-    asyncio.get_event_loop().stop()
-
 if __name__ == "__main__":
+    gecko_port = config['gecko_port']
+
     loop = asyncio.get_event_loop()
+    logging.basicConfig(level=logging.INFO)
 
-    loop.create_task(main())
-    loop.run_forever()
+    server_gen = asyncio.start_server(handle_request, port=gecko_port)
+    server = loop.run_until_complete(server_gen)
 
-    pending = asyncio.Task.all_tasks(loop=loop)
-    group = asyncio.gather(*pending, return_exceptions=True)
-    loop.run_until_complete(group)
-    loop.close()
+    logging.info('Listening established on {0}'.format(server.sockets[0].getsockname()))
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        print('User interruption')
+        print()
+        pass # Press Ctrl+C to stop
+    finally:
+        print('[@] closing server . . .')
+        server.close()
+        print('[@] closing server complete')
+
+        print('[@] pending . . .')
+        pending = asyncio.Task.all_tasks(loop=loop)
+        group = asyncio.gather(*pending, return_exceptions=True)
+        loop.run_until_complete(group)
+        print('[@] pending complete')
+
+        print('[@] closing event loop . . .')
+        loop.close()
+        print('[@] closing event loop complete')
+
+        print('[@] Bye!)\n')

@@ -21,7 +21,15 @@ class LeagueParser:
         self.live_urls = None
 
     def get_match_name(self, match_url):
-        return match_url
+        if self.league_table is None:
+            print('[!] league table is None! Cant process get_match_name(%s)' % match_url)
+            return None
+
+        names = self.league_table[self.league_table.events == match_url].names
+        if len(names):
+            return names.values[0]
+        else:
+            return None
 
     async def parse(self, raw_data, encoding='utf-8'):
         """Превращает сырые данные (если они корректны) в удобную для работы

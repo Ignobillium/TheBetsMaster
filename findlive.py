@@ -38,19 +38,31 @@ async def _findlive_lemma(_gs, match_name):
 
 
 async def findlive(match_name):
+    print('[ ] handle request findlive %s' % match_name)
+    print('[ ] init gecko_scraper')
+
     _gs = GeckoScraper()
 
     try:
+        print('[ ] working with gecko_scraper')
         live_url = await _findlive_lemma(_gs, match_name)
+        print('[*] complete with %s' % match_name)
     except:
         if 'live' in _gs.driver.current_url:
+            print('[i] sending request parse_live to parsing_server')
             live_url = _gs.driver.current_url
             api = TBMApi()
             api.parse(live_url)
+            print('[*] complete sending request parse_live to parsing_server')
         else:
             print('НЕ ПОЛУЧИЛОСЬ НАЙТИ live ДЛЯ %s' % match_name)
             live_url = None
 
+    print('[i] %s => %s' % (live_url, match_name))
+
+    print('[i] quit gecko_scraper')
     _gs.quit()
+
+    print('[*] request findlive(%s) handled' % match_name)
 
     return live_url
