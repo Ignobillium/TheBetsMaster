@@ -6,12 +6,20 @@ from parse_live import parse_live
 from parse_all import parse_all
 from _config import config
 
+from cron_worker import CronWorker
+
+
+class TDMServerV:
+    cron = CronWorker()
+
 
 async def handle_request(reader, writer):
     data = await reader.read(1000)
     loop = asyncio.get_event_loop()
 
     request = data.decode()
+
+    print('[ ] Request [%s] recieved' % request)
 
     s_requets = request.split()
     task = s_requets[0]
@@ -24,7 +32,16 @@ async def handle_request(reader, writer):
         elif 'league' in param:
             loop.create_task(parse_league(param))
         elif 'all' in param:
-            loop.create_task(parse_all())
+            await parse_all(TDMServerV.cron)
+
+    elif task=='deltask':
+        param = s_requets[1]
+        TDMServerV.cron.deltask(param)
+        TDMServerV.cron.write()
+
+    elif task == 'parse_league':
+        param = s_requets[1]
+        loop.create_task(parse_league(param))
 
 
 if __name__ == "__main__":

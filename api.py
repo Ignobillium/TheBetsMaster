@@ -24,6 +24,8 @@ class TBMApi:
         finally:
             sock.close()
 
+    def parse_league(self, url):
+        TBMApi.send_request('parse_league %s' % url, self.port)
     def parse(self, url):
         TBMApi.send_request('parse %s' % url, self.port)
 
@@ -37,6 +39,7 @@ def init_argparser():
     argparser = argparse.ArgumentParser()
 
     argparser.add_argument('--parse', action='store')
+    argparser.add_argument('--parse_league', action='store')
     argparser.add_argument('--deltask', action='store')
     argparser.add_argument('--findlive', action='store')
 
@@ -58,3 +61,6 @@ if __name__ == '__main__':
 
     if args.parse:
         api.parse(args.parse)
+
+    if args.parse_league:
+        api.parse_league(args.parse_league)
