@@ -133,3 +133,13 @@ class TestMatchParser:
                 'Result <%s> != hda_k <%s>' % (
                 TestMatchParser.mp[i].hda_k.loc['Fonbet'].values,
                 odds[i])
+
+    def test_incomplete_data(self):
+        incomplete_data = get_data('incomplete_data_page.html')
+
+        mp = MatchParser(incomplete_data)
+        mt = mp.match_table
+
+        assert (mp.hda.columns.values == np.array(['x', '2'])).all()
+        assert mp.hda_k.loc['LigaStavok']['k_x'] == 13.5
+        assert mp.hda_k.loc['Skybet']['k_2'] == 101.

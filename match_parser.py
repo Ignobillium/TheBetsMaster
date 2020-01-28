@@ -247,21 +247,33 @@ class MatchParser:
                 * data = непосредственно коэфиициенты
         """
         block = self.ratio_blocks[0]
+        first_row = block.find_class('ratio-row')[0]
+
+        n_cols_total = len(first_row.getchildren())
+        # n_k = n_cols_total - (открыть/закрыть' + 'payout')
+        n_k = n_cols_total - 2
+
+        p_names = list(map(
+            lambda x: x.text_content().replace('\n', '').lower(),
+            first_row.find_class('bold')))
+        k_names = list(map(
+            lambda x: 'k_%s' % x,
+            p_names))
 
         odds = np.array(
             list(map(
                 lambda x: float(x) if len(x) > 0 else np.nan,
                 [i.text_content().replace('\n', '')
-                for i in block.find_class('number')[3:]]
-            ))).reshape((-1, 3))
+                for i in block.find_class('number')[n_k:]]
+            ))).reshape((-1, n_k))
 
         bookies = [i.text_content().replace('\n', '') for i in block.find_class('bookmaker-name')]
 
         # коэффициенты
-        k = pd.DataFrame(data=odds, columns=['k_1', 'k_x', 'k_2'], index=bookies[3:])
+        k = pd.DataFrame(data=odds, columns=k_names, index=bookies[n_k:])
         #print(k)
         # вероятности
-        p = pd.DataFrame(data=np.nanmean(odds ** -1, axis=0).reshape((1,3)), columns=['1', 'x', '2'])
+        p = pd.DataFrame(data=np.nanmean(odds ** -1, axis=0).reshape((1,n_k)), columns=p_names)
 
         if self._hda is None: self._hda = p
         if self._hda_k is None: self._hda_k = k
