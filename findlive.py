@@ -49,16 +49,17 @@ async def findlive(match_name):
         print('[*] complete with %s' % match_name)
     except:
         if 'live' in _gs.driver.current_url:
-            print('[i] sending request parse_live to parsing_server')
             live_url = _gs.driver.current_url
-            api = TBMApi()
-            api.parse(live_url)
-            print('[*] complete sending request parse_live to parsing_server')
         else:
             print('НЕ ПОЛУЧИЛОСЬ НАЙТИ live ДЛЯ %s' % match_name)
-            live_url = None
+            return
 
     print('[i] %s => %s' % (live_url, match_name))
+
+    print('[i] sending request parse_live to parsing_server')
+    api = TBMApi()
+    api.parse(live_url)
+    print('[*] complete sending request parse_live to parsing_server')
 
     print('[i] quit gecko_scraper')
     _gs.quit()

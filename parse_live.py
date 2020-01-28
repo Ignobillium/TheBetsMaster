@@ -23,7 +23,8 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         return mp.time_shift > 120
 
     if 'oddsfan.com' in live_url_:
-        live_url = live_url_.replace('oddsfan.ru', 'oddsfan.com')
+        print('[i] There is ` .com ` in live_url (parse_live); replacing...')
+        live_url = live_url_.replace('oddsfan.com', 'oddsfan.ru')
     else:
         live_url = live_url_
 
