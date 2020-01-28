@@ -15,12 +15,17 @@ class ParseLiveStandaloneV:
         'ended'
     )
 
-async def parse_live(live_url, scrap_method=Scraper.get_raw_data,
+async def parse_live(live_url_, scrap_method=Scraper.get_raw_data,
 dbw=ParseLiveStandaloneV.dbw, dt=10):
     # End Of Match
     def eom(mp):
         # return ''
         return mp.time_shift > 120
+
+    if 'oddsfan.com' in live_url_:
+        live_url = live_url_.replace('oddsfan.ru', 'oddsfan.com')
+    else:
+        live_url = live_url_
 
     iteration = -1
 

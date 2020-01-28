@@ -6,13 +6,13 @@ from scraper import Scraper
 from cron_worker import CronWorker
 from parse_league import parse_league
 
-async def parse_all():
+async def parse_all(cron_=None):
     async def get_countries():
-        raw_data = await Scraper.get_raw_data('https://www.oddsfan.ru/sport/soccer')
+        raw_data = await Scraper.get_raw_data('https://www.oddsfan.com/sport/soccer')
 
         page = html.fromstring(raw_data)
         a = page.xpath('//li[@class="open-country-popup-js"]/a')
-        hrefs = list('https://oddsfan.ru/%s' % i.get("href") for i in a)
+        hrefs = list('https://oddsfan.com/%s' % i.get("href") for i in a)
 
         return hrefs
 
@@ -21,7 +21,7 @@ async def parse_all():
 
         page2 = html.fromstring(raw_data2)
         a2 = page2.xpath('//ul/li[@class="list-item"]/a')
-        hrefs2 = list('https://oddsfan.ru/%s' % i.get('href') for i in a2)
+        hrefs2 = list('https://oddsfan.com/%s' % i.get('href') for i in a2)
 
         return hrefs2
 
@@ -45,8 +45,14 @@ async def parse_all():
         leagues_urls += d
 
     id_ = 0
-    cron = CronWorker()
-    del tasks; tasks = []
+    del tasks
+    tasks = []
+
+    if cron_ is None:
+        cron = CronWorker()
+    else:
+        cron = cron_
+
     for league_url in leagues_urls:
         print('%3d / %3d processed' % (id_, len(leagues_urls)) )
         task = asyncio.ensure_future(_parse_league(league_url, cron=cron))

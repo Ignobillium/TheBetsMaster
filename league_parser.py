@@ -60,16 +60,17 @@ class LeagueParser:
             return
 
         self.live_urls = [
-            'https://oddsfan.ru/%s' % i.get('href')
+            'https://oddsfan.com/%s' % i.get('href')
             for i in self.league_page.xpath("//tr[@class='live']/td[@class='event-holder']/a")]
 
         self.pre_urls  = [
-            'https://oddsfan.ru/%s' % i.get('href')
+            'https://oddsfan.com/%s' % i.get('href')
             for i in self.league_page.xpath("//td[@class='event-holder']/a") if not 'live' in i.get('href')]
 
         self.league_table.rename(columns={
             'Unnamed: 0': 'datetime',
-            'СОБЫТИЯ': 'events'}, inplace=True)
+            'СОБЫТИЯ': 'events',
+            'EVENTS': 'events'}, inplace=True)
 
         for j, i in enumerate(self.league_table.datetime):
             self.league_table.datetime[j] = parse_datetime(self.league_table.datetime[j])

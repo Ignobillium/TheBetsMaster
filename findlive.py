@@ -18,7 +18,7 @@ async def _findlive_lemma(_gs, match_name):
     li  = 'select2-results__option'
     ul  = 'select2-results__options'
 
-    await _gs.new_tab('https://oddsfan.ru')
+    await _gs.new_tab('https://oddsfan.com')
 
     wait = WebDriverWait(_gs.driver, 10)
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, sf)))
