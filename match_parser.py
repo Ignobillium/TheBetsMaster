@@ -7,11 +7,21 @@ import pandas as pd
 
 class MatchParser:
 
+    class Err:
+        work_in_progress = -1
+        no_match_name = -2
+        no_match_datetime = -3
+        no_current_score = -4
+        no_ratio_block = -5
+        no_odds_available = -6
+
     def __init__(self, raw_data, encoding='utf-8'):
         if isinstance(raw_data, bytes):
             self.page = html.fromstring(raw_data.decode(encoding))
+            self.data = raw_data.decode(encoding)
         elif isinstance(raw_data, str):
             self.page = html.fromstring(raw_data)
+            self.data = raw_data
 
         self.ratio_blocks = self.page.find_class('ratio-block')
 
@@ -32,6 +42,24 @@ class MatchParser:
         self._time_shift = None
 
         self._match_table = None
+
+    def check_data(self):
+        err = []
+
+        if 'work in progress' in self.data.lower():
+            err.append(MatchParser.Err.work_in_progress)
+        if not len(self.ratio_blocks) > 0:
+            err.append(MatchParser.Err.no_ratio_block)
+        if len(MatchParser.get_teams(self.page)) != 2:
+            err.append(MatchParser.Err.no_match_name)
+        if self.match_datetime is None:
+            err.append(MatchParser.Err.no_match_datetime)
+        if MatchParser.get_current_score(self.page) == (None, None):
+            err.append(MatchParser.Err.no_current_score)
+        if 'нет доступных коэффициентов' in self.data.lower():
+            err.append(MatchParser.Err.no_odds_available)
+
+        return err
 
     @staticmethod
     def generate_match_name(team1, team2):
@@ -112,10 +140,6 @@ class MatchParser:
         """
         datetime_block = page.find_class('date')
         if len(datetime_block) == 0:
-            print('[!] cant detect datetime for match %s' %
-                MatchParser.generate_match_name(
-                    MatchParser.get_teams(page)[0],
-                    MatchParser.get_teams(page)[1]))
             return
 
         datetime_string = datetime_block[0].text_content()
@@ -157,6 +181,17 @@ class MatchParser:
             self._team1 = MatchParser.get_teams(self.page)[0]
         return self._team1
 
+    @team1.setter
+    def team1(self, new_team1):
+        if not isinstance(str, new_team1):
+            raise TypeError
+
+        self._team1 = new_team1
+        self._match_name = MatchParser.generate_match_name(
+            self._team1,
+            self._team2
+        )
+
     @property
     def team2(self):
         """Название второй команды.
@@ -164,6 +199,25 @@ class MatchParser:
         if self._team2 is None:
             self._team2 = MatchParser.get_teams(self.page)[1]
         return self._team2
+
+    @team2.setter
+    def team2(self, new_team2):
+        if not isinstance(str, new_team2):
+            raise TypeError
+
+        self._team2 = new_team2
+        self._match_name = MatchParser.generate_match_name(
+            self._team1,
+            self._team2
+        )
+
+    @property
+    def match_name(self):
+        """Название матча. ` str `
+        """
+        if self._match_name is None:
+            self._match_name = MatchParser.generate_match_name(self.team1, self.team2)
+        return self._match_name
 
     @property
     def match_datetime(self):
@@ -173,22 +227,23 @@ class MatchParser:
             self._match_datetime = MatchParser.get_match_datetime(self.page)
         return self._match_datetime
 
+    @match_datetime.setter
+    def match_datetime(self, new_datetime):
+        if  not isinstance(datetime, new_datetime):
+            raise TypeError
+
+        self._match_datetime = new_datetime
+
     @property
     def time_shift(self):
         """Время, прошедшее с начала матча, в минутах. ` float `
         """
-        if self._time_shift is None:
-            self._time_shift = datetime.now() - self.match_datetime
-            self._time_shift = self._time_shift.total_seconds() / 60.
+        self._time_shift = (datetime.now() - self.match_datetime).total_seconds() / 60.
         return self._time_shift
 
-    @property
-    def match_name(self):
-        """Название матча. ` str `
-        """
-        if self._match_name is None:
-            self._match_name = MatchParser.generate_match_name(self.team1, self.team2)
-        return self._match_name
+    @time_shift.setter
+    def time_shift(self, new_time_shift):
+        self._time_shift = new_time_shift
 
     @property
     def hda(self):
