@@ -2,6 +2,7 @@ import asyncio
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -9,10 +10,27 @@ from selenium.webdriver.common.by import By
 
 class GeckoScraper:
 
-    def __init__(self):
+    @staticmethod
+    def get_headless_options():
+        opts = Options()
+        # ?opts.add_argument("--disable-extensions")
+        # ?opts.add_argument("--disable-gpu")
+        # ?opts.add_argument("--no-sandbox) # linux only
+        opts.add_argument("--headless")
+        return opts
+
+    @staticmethod
+    def headless():
+        return  GeckoScraper(options = GeckoScraper.get_headless_options())
+
+    def __init__(self, options=None):
         gecko_path = '/home/ignobillium/dev/geckodriver'
 
-        self.driver = webdriver.Firefox(executable_path=gecko_path)
+        if options is None:
+            self.driver = webdriver.Firefox(executable_path=gecko_path)
+        else:
+            self.driver = webdriver.Firefox(executable_path=gecko_path, options=options)
+
         self.driver.get("http://www.python.org")
 
         assert "Python" in self.driver.title
