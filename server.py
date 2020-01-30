@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 
 from parse_league import parse_league
 from parse_live import parse_live
@@ -44,8 +45,24 @@ async def handle_request(reader, writer):
         loop.create_task(parse_league(param))
 
 
+def hello(port):
+    hello_str = '''
+* = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * =
+*
+*   TBMServer by @ignobillium
+*       version 1.0
+*       %s
+* = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * =
+
+listening port %s''' % (datetime.now().strftime('%Y'), port)
+    return hello_str
+
+
+
 if __name__ == "__main__":
     port = config['port']
+
+    print(hello(port))
 
     loop = asyncio.get_event_loop()
     logging.basicConfig(level=logging.INFO)

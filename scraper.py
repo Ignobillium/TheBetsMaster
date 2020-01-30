@@ -21,10 +21,21 @@ class Scraper:
         _raw_data : `bytes`
             Суть загруженные данные в сыром виде
         """
-        Scraper._status[url] = 'Obtaining data'
+        # Scraper._status[url] = 'Obtaining data'
         async with ClientSession() as sess:
             async with Scraper._sem:
                 async with sess.get(url) as response:
                     _raw_data = await response.read()
-                    Scraper._status[url] = 'Data obtained'
+                    # Scraper._status[url] = 'Data obtained'
                     return _raw_data
+
+    @staticmethod
+    def set_status(url, status):
+        Scraper._status[url] = status
+
+    @staticmethod
+    def get_status(url):
+        try:
+            return Scraper._status[url]
+        except:
+            return None

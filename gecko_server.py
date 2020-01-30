@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from datetime import datetime
 
 import argparse
 
@@ -29,8 +30,22 @@ async def handle_request(reader, writer):
         loop.create_task(findlive(param))
 
 
+def hello(port):
+    hello_str = '''
+* = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * =
+*
+*   TBMGeckoServer by @ignobillium
+*       version 1.0
+*       %s
+* = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * = * =
+
+listening port %s''' % (datetime.now().strftime('%Y'), port)
+    return hello_str
+
 if __name__ == "__main__":
     gecko_port = config['gecko_port']
+
+    print(hello(gecko_port))
 
     loop = asyncio.get_event_loop()
     logging.basicConfig(level=logging.INFO)

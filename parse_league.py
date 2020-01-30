@@ -61,12 +61,12 @@ async def parse_league(league_url_, cron=None):
             match_name = lp.get_match_name(url)
             cron.pushTask(generate_findlive_task(match_name))
             cron.pushComment(url)
-            cron.pushDatetime(datetime_)
+            cron.pushDatetime(datetime_ + timedelta(minutes=3))
             cron.commit()
 
             cron.pushTask(generate_deltask_task(url))
             cron.pushComment(url)
-            cron.pushDatetime(datetime_ + timedelta(minutes=2))
+            cron.pushDatetime(datetime_ + timedelta(minutes=5))
             cron.commit()
 
     if w:

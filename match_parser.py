@@ -183,7 +183,7 @@ class MatchParser:
 
     @team1.setter
     def team1(self, new_team1):
-        if not isinstance(str, new_team1):
+        if not isinstance(new_team1, str):
             raise TypeError
 
         self._team1 = new_team1
@@ -202,7 +202,7 @@ class MatchParser:
 
     @team2.setter
     def team2(self, new_team2):
-        if not isinstance(str, new_team2):
+        if not isinstance(new_team2, str):
             raise TypeError
 
         self._team2 = new_team2
@@ -229,7 +229,7 @@ class MatchParser:
 
     @match_datetime.setter
     def match_datetime(self, new_datetime):
-        if  not isinstance(datetime, new_datetime):
+        if  not isinstance(new_datetime, datetime):
             raise TypeError
 
         self._match_datetime = new_datetime

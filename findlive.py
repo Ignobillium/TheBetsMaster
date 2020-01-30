@@ -41,7 +41,7 @@ async def findlive(match_name):
     print('[ ] handle request findlive %s' % match_name)
     print('[ ] init gecko_scraper')
 
-    _gs = GeckoScraper()
+    _gs = GeckoScraper.headless()
 
     try:
         print('[ ] working with gecko_scraper')
