@@ -8,10 +8,17 @@ from parse_all import parse_all
 from _config import config
 
 from cron_worker import CronWorker
+from database_worker import DataBaseWorker
 
 
-class TDMServerV:
+class TBMServerV:
     cron = CronWorker()
+    dbw = DataBaseWorker(
+        'data/for_models.sqlite3',
+        'matches',
+        'data/for_models_ended.sqlite3',
+        'ended'
+    )
 
 
 async def handle_request(reader, writer):
@@ -29,16 +36,16 @@ async def handle_request(reader, writer):
         param = s_requets[1]
 
         if 'live' in param:
-            loop.create_task(parse_live(param))
+            loop.create_task(parse_live(param, dbw=TBMServerV.dbw))
         elif 'league' in param:
             loop.create_task(parse_league(param))
         elif 'all' in param:
-            await parse_all(TDMServerV.cron)
+            await parse_all(TBMServerV.cron)
 
     elif task=='deltask':
         param = s_requets[1]
-        TDMServerV.cron.deltask(param)
-        TDMServerV.cron.write()
+        TBMServerV.cron.deltask(param)
+        TBMServerV.cron.write()
 
     elif task == 'parse_league':
         param = s_requets[1]
@@ -60,6 +67,13 @@ listening port %s''' % (datetime.now().strftime('%Y'), port)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s',
+        level=logging.DEBUG,
+        filename = 'server.log')
+
+    # TODO:
+    #* check `Work in progress` up to start server
+
     port = config['port']
 
     print(hello(port))
