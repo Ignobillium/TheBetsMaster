@@ -3,13 +3,18 @@ import asyncio
 import logging
 import traceback
 
-from scraper import Scraper
-from gecko_scraper import GeckoScraper
+import aiohttp
 
+from scraper import Scraper
 from match_parser import MatchParser
+from gecko_scraper import GeckoScraper
 from database_worker import DataBaseWorker
 
+
 class ParseLiveStandaloneV:
+    """Класс-пространство имён для местных нужд. Имеет смысл, когда parse_live.py
+    вызывается как самостоятельная программа либо со стандартными параметрами.
+    """
     dbw = DataBaseWorker(
         'data/parse_live_standalone_data.sqlite3',
         'matches',
@@ -18,54 +23,26 @@ class ParseLiveStandaloneV:
     )
     err_counter = 0
 
-""" async def parse_live(live_url_, scrap_method=Scraper.get_raw_data,
-dbw=ParseLiveStandaloneV.dbw, dt=10):
-    # End Of Match
-    def eom(mp):
-        # return ''
-        return mp.time_shift > 120
-
-    async def parsing_iteration(live_url_, scrap_method, dbw, dt):
-        t0 = datetime.now()
-
-        raw_data = await scrap_method(live_url_)
-        mp = MatchParser(raw_data)
-
-        asyncio.get_event_loop().create_task(dbw.write_data(mp))
-
-        t_sleep = (datetime.now() - t0).seconds
-        if dt > t_sleep:
-            await asyncio.sleep(dt - t_sleep)
-
-        return mp
-
-    t_start = datetime.now()
-
-    if 'oddsfan.com' in live_url_:
-        print('[i] There is ` .com ` in live_url (parse_live); replacing...')
-        live_url = live_url_.replace('oddsfan.com', 'oddsfan.ru')
-    else:
-        live_url = live_url_
-
-    iteration = 0
-    while True:
-        print('[ ] parsing live iteration %3d # %s' % (iteration, live_url))
-        try:
-            mp = await parsing_iteration(live_url, scrap_method, dbw, dt)
-
-            if (datetime.now() - t_start).seconds > 8100:
-                break
-            elif eom(mp):
-                break
-        except:
-            print('[!] An exception occurs in %s' % live_url)
-        finally:
-            iteration += 1
- """
-
 
 async def parse_live(live_url, scrap_method=Scraper.get_raw_data,
 dbw=ParseLiveStandaloneV.dbw, dt=10):
+    """Загружает, обрабатывает и сохраняет данные матча по указанной ссылке
+    до тех пор, пока он не завершится.
+
+    Parameters
+    ----------
+    live_url : ` str `
+        URL идущёго матча.
+
+    scrap_method : ` coroutine `
+        Асинхронная сопрограмма, загружающая данные по ссылке.
+
+    dbw : ` DataBaseWorker `
+        Воркер, что будет записывать результаты анализа в БД.
+
+    dt : ` int `
+        Пауза между итерациями в секундах.
+    """
     def process_url(url):
         """Проверяет корректность url (начличие live) и преобразует его к .ru
         по необходимости.
@@ -89,6 +66,8 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
             return url
 
     async def save_html_for_analysis(html_data):
+        """Сохраняет страницу, вызвавшую исключение, для последующего анализа.
+        """
         print('[ ] Handling <shape of passed values> exception')
         with open('data/exceptions/%s' % datetime.now()) as f:
             f.write(mp.data)
@@ -96,7 +75,7 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
             f.write(traceback.format_exc())
         print('[*] Html data saved to data/exceptions')
 
-    async def get_primary_cache(url, scrap_method, max_iter=10):
+    async def generate_primary_cache(url, scrap_method, max_iter=10):
         """Извлекает постоянные матча: названия команд и дату начала.
 
         Parameters
@@ -143,7 +122,7 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                 logging.exception(traceback.format_exc())
             except ValueError as e:
                 if 'Shape of passed values' in str(e):
-                    await save_html_for_analysis(raw_data)
+                    asyncio.get_event_loop().create_task(save_html_for_analysis(raw_data))
                     logging.exception(traceback.format_exc())
             finally:
                 await asyncio.sleep(iteration)
@@ -161,34 +140,40 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
 
         Returns
         ----------
-            True если да, False если нет.
+            True если матч завершён, False если нет.
         """
         return 'матч завершен' in mp.data.lower() or mp.time_shift > 115 # 90 + 15 + 10
-
 
     logging.debug('Processing url <%s>' % live_url)
     url = process_url(live_url)
     if url is None:
         logging.error('Given incorrect url <%s>' % live_url)
         ParseLiveStandaloneV.err_counter += 1
+        #? В будущем попробовать запилить fix_url
         return
 
+    logging.info('Start parsing %s' % url)
     status = Scraper.get_status(url)
     if status is not None:
-        logging.debug('Given request `parse_live` for url <%s> with status %s' % (url, status))
-        if status == 'parse_live':
-            logging.warning('Duplicated request parse_live <%s>' % url)
+        logging.debug('Request `parse_live` has status %s # %s' % (status, url))
+        if status == 'parsing_live':
+            logging.warning('Duplicated request parse_live # %s' % url)
             # may be stop parsing
     else:
-        logging.debug('Set `parsing_live` status to %s' % url)
+        # TODO:
+        #! Набор статусов в Scraper как MatchParser.Err
+        logging.debug('Set the status to `parsing_live` # %s' % url)
         Scraper.set_status(url, 'parsing_live')
 
     logging.debug('Generating primary cache for <%s>' % url)
-    mp, cache = await get_primary_cache(url, scrap_method)
+    mp, cache = await generate_primary_cache(url, scrap_method)
 
     if mp is None:
-        logging.error('No primary cache for <%s> break' % url)
+        logging.error('Generating cache failed; break # %s' % url)
         ParseLiveStandaloneV.err_counter += 1
+        logging.debug('Create new task because of primary cache generating fault # %s' % url)
+        asyncio.get_event_loop().create_task(
+            parse_live(url, scrap_method, dbw, dt))
         return
 
     #? нужен ли здесь try-except?
@@ -198,14 +183,16 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         assert isinstance(cache['team2'], str) and len(cache['team2']) > 0
         assert isinstance(cache['match_datetime'], datetime)
     except AssertionError:
-        logging.error('Cant generate primary cache for <%s>' % url)
+        logging.error('Can`t generate primary cache for <%s>' % url)
         logging.exception(traceback.format_exc())
+
+        logging.info('Create new parse_live task `cos of primary cache generating fault # %s' % url)
         asyncio.get_event_loop().create_task(
             parse_live(live_url, scrap_method, dbw, dt))
         ParseLiveStandaloneV.err_counter += 1
         return
 
-    logging.debug('Start parsing <%s>' % url)
+    logging.info('Start parsing <%s>' % url)
 
     iteration = -1
     t_sleep = dt
@@ -246,16 +233,10 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                 return
             if MatchParser.Err.no_current_score in err_:
                 logging.error('There is no current score for %s' % url)
-                try:
-                    if mp.match_datetime > datetime.now():
-                        t_sleep = (mp.match_datetime - datetime.now()).seconds
-
-                    mt = mp.match_table
-                    asyncio.get_event_loop().create_task(
-                        dbw.write_data(mt))
-                    t_sleep = dt
-                except:
-                    pass
+                if mp.match_datetime > datetime.now():
+                    t_sleep = (mp.match_datetime - datetime.now()).seconds
+                else:
+                    t_sleep = dt * 2
             if MatchParser.Err.no_odds_available in err_:
                 logging.info('No odds available at this moment for <%s>; sleep for %d' % (url, 3*dt))
                 # await asyncio.sleep(3 * dt)
@@ -264,11 +245,10 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                 logging.info('No ratio blocks available for <%s> at this moment; sleep for %d' % (url, dt))
                 # await asyncio.sleep(dt)
                 t_sleep = dt
-
         await asyncio.sleep(t_sleep)
 
         iteration += 1
-        if iteration % 3 == 0:
+        if iteration % 12 == 0:
             print('[ ] parsing_live iteartion %3d # %s' % (iteration, url))
 
         q = 10
@@ -279,8 +259,11 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                 break
             except ValueError as e:
                 if 'Shape of passed values' in str(e):
-                    await save_html_for_analysis(raw_data)
+                    asyncio.get_event_loop().create_task(save_html_for_analysis(raw_data))
                     logging.exception(traceback.format_exc())
+            except aiohttp.client_exceptions.ClientPayloadError:
+                logging.exception(traceback.format_exc())
+                print('\n\n[!] aiohttp.client_exceptions.ClientPayloadError # %s\n\n' % url)
             except:
                 logging.exception(traceback.format_exc())
             finally:
@@ -297,7 +280,14 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         # except:
         #     logging.error('')
 
+    mp.team1 = cache['team1']
+    mp.team2 = cache['team2']
+    mp.match_datetime = cache['match_datetime']
+    logging.info('Match <> has been ended # %s' % url)
+    # logging.debug('Marking match as ended # %s' % url)
     dbw.mark_match_as_ended(mp)
+    # logging.debug('Remove status # %s' % url)
+    Scraper.remove_status(url)
 
 
 async def main():

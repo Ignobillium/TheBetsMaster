@@ -98,22 +98,10 @@ class DataBaseWorker:
         match : `str` or `MatchParser object`
             Имя матча либо объект MatchParser, из которого его можно извлечь.
         """
-        def who_won(mp):
-            score1 = mp.score1
-            score2 = mp.score2
-
-            ww = '1'
-            if score1 == score2:
-                ww = 'x'
-            elif score1 < score2:
-                ww = '2'
-
-            return ww
 
         if isinstance(mp, MatchParser):
             df = pd.DataFrame({
-                'match_name': mp.match_name,
-                'who_won': who_won(mp)},
+                'match_name': mp.match_name},
                 index=[1])
             df.to_sql(
                 self.ended_matches_table_name,
@@ -122,8 +110,7 @@ class DataBaseWorker:
                 index=False)
         elif isinstance(mp, str):
             df = pd.DataFrame({
-                'match_name': mp,
-                'who_won': who_won(mp)},
+                'match_name': mp},
                 index=[1])
             df.to_sql(
                 self.ended_matches_table_name,
@@ -131,4 +118,4 @@ class DataBaseWorker:
                 if_exists='append',
                 index=False)
         else:
-            raise TypeError("mp must be MatchPArser or pd.DataFrame, not %s" % type(mp))
+            raise TypeError("mp must be MatchParser or pd.DataFrame, not %s" % type(mp))
