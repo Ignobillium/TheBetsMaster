@@ -39,3 +39,8 @@ class Scraper:
             return Scraper._status[url]
         except:
             return None
+
+    @staticmethod
+    def remove_status(url):
+        if url in Scraper._status.keys():
+            del Scraper._status[url]
