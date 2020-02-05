@@ -1,5 +1,7 @@
+import asyncio
 import sqlite3
 import logging
+import traceback
 
 import pandas as pd
 
@@ -45,24 +47,48 @@ class DataBaseWorker:
         data : ` MatchParser object ` либо ` pandas.DataFrame `
             Объект MatchParser с информацией о матче.
         """
-        if isinstance(mp, MatchParser):
-            logging.debug('Write data from match_parser to %s/%s' % (
-                self.db_name, self.data_table_name))
+        try:
+            if isinstance(mp, MatchParser):
+                logging.debug('Write data from match_parser to %s/%s' % (
+                    self.db_name, self.data_table_name))
 
-            mp.match_table.to_sql(
-                self.data_table_name,
-                self.db_conn,
-                if_exists='append',
-                index=False)
-        elif isinstance(mp, pd.DataFrame):
-            logging.debug('Write data from pd.DataFrame to %s/%s' % (
-                self.db_name, self.data_table_name))
+                mp.match_table.to_sql(
+                    self.data_table_name,
+                    self.db_conn,
+                    if_exists='append',
+                    index=False)
+            elif isinstance(mp, pd.DataFrame):
+                logging.debug('Write data from pd.DataFrame to %s/%s' % (
+                    self.db_name, self.data_table_name))
 
-            mp.to_sql(
-                self.data_table_name,
-                self.db_conn,
-                if_exists='append',
-                index=False)
+                mp.to_sql(
+                    self.data_table_name,
+                    self.db_conn,
+                    if_exists='append',
+                    index=False)
+        except sqlite3.OperationalError as e:
+            logging.exception(traceback.format_exc())
+            txt = str(e)
+            if 'no such column' in txt.lower():
+                print(mp)
+                stxt = txt.split(' ')
+                column_name = stxt[-1]
+                print('[!] sqlite3.OperationalError. No such column %s' % column_name)
+
+                cursor = self.db_conn.cursor()
+                req = 'ALTER TABLE %s ADD COLUMN %s' % (
+                    self.data_table_name,
+                    column_name)
+                cursor.execute(req)
+                self.db_conn.commit()
+
+                logging.debug('create new write_data task after creating new column')
+                asyncio.get_event_loop().create_task(self.write_data(mp))
+            else:
+                logging.error('Unexpected exception')
+                logging.error(str(mp))
+                print('\n\n', mp, '\n\n')
+
 
     async def mark_match_as_ended(self, mp):
         """Помечает матч как завершённый.
@@ -104,3 +130,5 @@ class DataBaseWorker:
                 self.em_conn,
                 if_exists='append',
                 index=False)
+        else:
+            raise TypeError("mp must be MatchPArser or pd.DataFrame, not %s" % type(mp))
