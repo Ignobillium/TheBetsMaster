@@ -83,10 +83,18 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
             logging.error('There is no `live` in given url <%s>' % url)
             return None
 
-        if 'oddsfan.ru' in url:
-            return url.replace('oddsfan.ru', 'oddsfan.com')
+        if 'oddsfan.com' in url:
+            return url.replace('oddsfan.com', 'oddsfan.ru')
         else:
             return url
+
+    async def save_html_for_analysis(html_data):
+        print('[ ] Handling <shape of passed values> exception')
+        with open('data/exceptions/%s' % datetime.now()) as f:
+            f.write(mp.data)
+        with open('data/exceptions/exception.txt') as f:
+            f.write(traceback.format_exc())
+        print('[*] Html data saved to data/exceptions')
 
     async def get_primary_cache(url, scrap_method, max_iter=10):
         """Извлекает постоянные матча: названия команд и дату начала.
@@ -127,12 +135,16 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                     logging.error('Can`t detect match_datetime <%s>' % url)
 
                 if iteration == max_iter:
-                    logging.error('Allowed iteraion limit reached <%s>' % url)
+                    logging.error('Iteraion limit reached # %s' % url)
                     return None, None
             # no `teams` block in the given data
             except IndexError:
                 logging.error('Can`t detect teams name')
                 logging.exception(traceback.format_exc())
+            except ValueError as e:
+                if 'Shape of passed values' in str(e):
+                    await save_html_for_analysis(raw_data)
+                    logging.exception(traceback.format_exc())
             finally:
                 await asyncio.sleep(iteration)
                 iteration += 1
@@ -195,7 +207,7 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
 
     logging.debug('Start parsing <%s>' % url)
 
-    iteration = 0
+    iteration = -1
     t_sleep = dt
     while not end_of_match(mp):
         t0 = datetime.now()
@@ -255,12 +267,35 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
 
         await asyncio.sleep(t_sleep)
 
-        if iteration % 12 == 0:
+        iteration += 1
+        if iteration % 3 == 0:
             print('[ ] parsing_live iteartion %3d # %s' % (iteration, url))
 
-        iteration += 1
-        raw_data = await scrap_method(url)
-        mp = MatchParser(raw_data)
+        q = 10
+        while q > 0:
+            try:
+                raw_data = await scrap_method(url)
+                mp = MatchParser(raw_data)
+                break
+            except ValueError as e:
+                if 'Shape of passed values' in str(e):
+                    await save_html_for_analysis(raw_data)
+                    logging.exception(traceback.format_exc())
+            except:
+                logging.exception(traceback.format_exc())
+            finally:
+                q -= 1
+                await asyncio.sleep(dt)
+        else:
+            logging.error('Too many trying for reach %s' % url)
+            Scraper.set_status(url, 'Xyeta')
+            asyncio.get_event_loop().create_task(
+                parse_live(live_url, scrap_method, dbw, dt))
+        # try:
+        #     raw_data = await scrap_method(url)
+        #     mp = MatchParser(raw_data)
+        # except:
+        #     logging.error('')
 
     dbw.mark_match_as_ended(mp)
 
