@@ -1,6 +1,8 @@
 import socket
 import argparse
 
+from _config import config
+
 
 # TBM = TheBetsMaster
 class TBMApi:
@@ -46,7 +48,8 @@ def init_argparser():
     return argparser
 
 if __name__ == '__main__':
-    api = TBMApi()
+    port = config['port']
+    api = TBMApi(port)
 
     argparser = init_argparser()
     args = argparser.parse_args()

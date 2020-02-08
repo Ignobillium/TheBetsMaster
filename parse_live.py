@@ -100,9 +100,8 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         iteration = 0
 
         while not succsess:
-            raw_data = await scrap_method(url)
-
             try:
+                raw_data = await scrap_method(url)
                 mp = MatchParser(raw_data)
                 t1 = mp.team1
                 t2 = mp.team2
@@ -124,25 +123,16 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
                 if 'Shape of passed values' in str(e):
                     asyncio.get_event_loop().create_task(save_html_for_analysis(raw_data))
                     logging.exception(traceback.format_exc())
+            except aiohttp.client_exceptions.ClientPayloadError:
+                # TODO:
+                #! Вписать обработку этого исключения в Scraper.get_raw_data
+                #! А то слишком уж часто мелькает и всё не отследить
+                print('\n\n[!] aiohttp.client_exceptions.ClientPayloadError # %s\n\n' % url)
             finally:
                 await asyncio.sleep(iteration)
                 iteration += 1
 
         return mp, {'team1': t1, 'team2': t2, 'match_datetime': dt}
-
-    def end_of_match(mp):
-        """Проверяет, наступил ли конец матча.
-
-        Parameters
-        ----------
-        mp : ` MatchParser `
-            Объект MatchParser, матч которого нужно проверит на завершение.
-
-        Returns
-        ----------
-            True если матч завершён, False если нет.
-        """
-        return 'матч завершен' in mp.data.lower() or mp.time_shift > 115 # 90 + 15 + 10
 
     logging.debug('Processing url <%s>' % live_url)
     url = process_url(live_url)
@@ -192,11 +182,20 @@ dbw=ParseLiveStandaloneV.dbw, dt=10):
         ParseLiveStandaloneV.err_counter += 1
         return
 
-    logging.info('Start parsing <%s>' % url)
+    # logging.info('Start parsing <%s>' % url)
 
     iteration = -1
     t_sleep = dt
+    # TODO:
+    #! mp.time_shift > 150: может не быть match_datetime => time_shift вызовет исключение
+    #! и наебнёт всю работу по парсингу этой ссылки
+    #! ИСПРАВИТЬ !
+    end_of_match = lambda x: (
+        datetime.now() - cache['match_datetime']).total_seconds() / 60. > 115 \
+            or 'матч завершен' in x.data.lower()
+
     while not end_of_match(mp):
+        # while not end_of_match(mp):
         t0 = datetime.now()
 
         mp.team1 = cache['team1']
@@ -298,6 +297,8 @@ async def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s',
+        level=logging.DEBUG)
     loop = asyncio.get_event_loop()
 
     loop.create_task(main())

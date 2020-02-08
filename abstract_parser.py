@@ -8,6 +8,79 @@ import numpy as np
 
 
 class AbstractParser:
+    # TODO: перенести ошибки RatioBlocks & BlockName в юрисдикцию OddsfanParser'а.
+    # TODO: ReshapingError тоже.
+    class exceptions:
+        class GeneralException(Exception):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+        class CacheError(GeneralException):
+            def __init__(self, text):
+                self.txt = text
+
+        class TeamsError(GeneralException):
+            def __init__(self, text, parser, teams_block_len):
+                self.txt = text
+                self.parser = parser
+                self.teams_block_len = teams_block_len
+
+        class ScoreError(GeneralException):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+        class DatetimeError(GeneralException):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+        class NoRatioBlocks(GeneralException):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+        class BlockNameError(GeneralException):
+            def __init__(self, text, parser, block):
+                self.txt = text
+                self.parser = parser
+                self.block = block
+
+        class RatioRowsError(GeneralException):
+            def __init__(self, text, parser, block):
+                self.txt = text
+                self.parser = parser
+                self.block = block
+
+        class NoHDABlock(GeneralException):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+        class ReshapingError(GeneralException):
+            def __init__(self, text, parser):
+                self.txt = text
+                self.parser = parser
+
+
+    class Cache:
+        def __init__(self, home, away, match_datetime):
+            if not isinstance(home, str):
+                raise AbstractParser.exceptions.CacheError(
+                    '`home` in AbstractParser.Cache must be str, not `%s`' % type(home))
+            elif not isinstance(away, str):
+                raise AbstractParser.exceptions.CacheError(
+                    '`away` in AbstractParser.Cache must be str, not `%s`' % type(away))
+            elif not isinstance(match_datetime, datetime):
+                raise AbstractParser.exceptions.CacheError(
+                    '`match_datetime` in AbstractParser.Cache must be datetime, not `%s`'
+                        % type(match_datetime))
+
+            self.home = home
+            self.away = away
+            self.match_datetime = match_datetime
+
     """Match Parser Interface"""
     sep = ' - '
 
@@ -21,14 +94,14 @@ class AbstractParser:
         elif isinstance(raw_data, str):
             self.data = raw_data
         else:
-            raise TypeError("Given data is %s, not str or bytes" % type(raw_data))
+            raise TypeError("Given raw_data is %s, not str or bytes" % type(raw_data))
 
-        self._page = html.fromstring(self.data)
+        self._page = None           #
 
         self._home = None           # #
         self._away = None           # #
 
-        self._datetime = None       # #
+        self._match_datetime = None       # #
         self._time_shift = None     #
 
         self._current_score = None  #
@@ -43,6 +116,9 @@ class AbstractParser:
         self._findDatetime = None       # #
         self._generateMatchTable = None # #
 
+    # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+    # TODO:
+    #! Заменить raise <...> в методах спецификации парсера на assert. Так будет логичнее
     @property
     def findHome(self):
         return self._findHome
@@ -52,7 +128,8 @@ class AbstractParser:
         if str(type(new_value)) != "<class 'function'>":
             raise TypeError("findHome must be function, not %s" % type(new_value))
         elif len(inspect.getfullargspec(new_value).args) != 1:
-            raise ValueError("Function findHome must take exactly one argument (AbstractParser obj aka self)")
+            raise ValueError(
+                "Function findHome must take exactly one argument (AbstractParser obj aka self)")
         self._findHome = new_value
 
     @property
@@ -91,7 +168,6 @@ class AbstractParser:
             raise ValueError("Function findDatetime must take exactly one argument (AbstractParser obj aka self)")
         self._findDatetime = new_value
 
-
     @property
     def generateMatchTable(self):
         return self._generateMatchTable
@@ -100,15 +176,19 @@ class AbstractParser:
     def generateMatchTable(self, new_value):
         if str(type(new_value)) != "<class 'function'>":
             raise TypeError("generateMatchTable must be function, not %s" % type(new_value))
-        elif len(inspect.getfullargspec(new_value).args) > 1:
+        elif len(inspect.getfullargspec(new_value).args) != 1:
             raise ValueError("Function generateMatchTable must take exactly one argument (AbstractParser obj aka self)")
         self._generateMatchTable = new_value
 
+    # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = # = #
+
     @property
     def page(self):
-        # page неизменяемый параметр класса, поэтому setter`а не будет
+        if self._page is None:
+            self._page = html.fromstring(self.data)
         return self._page
 
+    #
     @property
     def home(self):
         if self._home is None:
@@ -126,6 +206,7 @@ class AbstractParser:
         else:
             raise TypeError("Team name must be str or bytes, not %s" % type(new_home))
 
+    #
     @property
     def away(self):
         if self._away is None:
@@ -143,12 +224,14 @@ class AbstractParser:
         else:
             raise TypeError("Team name must be str or bytes, not %s" % type(new_away))
 
+    #
     @property
     def match_name(self):
         # т.к. ошибки типа обработаны в home и away,
         # этот метод не должен бросать отличные исключения
         return AbstractParser.generateMatchName(self.home, self.away)
 
+    #
     @property
     def current_score(self):
         """Возвращает текуший счёт в виде кортежа целых чисел"""
@@ -162,36 +245,41 @@ class AbstractParser:
                         raise RuntimeError("Detected current_score[%d] is %s, not int" % (j, type(i)))
         return self._current_score
 
+    #
     @property
-    def datetime(self):
-        if self._datetime is None:
-            self._datetime = self._findDatetime(self)
-            if not isinstance(datetime, self._datetime):
+    def match_datetime(self):
+        if self._match_datetime is None:
+            self._match_datetime = self._findDatetime(self)
+            if not isinstance(self._match_datetime, datetime):
                 raise RuntimeError("Detected datetime is not python.datetime # %s" % self.match_name)
-        return self._datetime
+        return self._match_datetime
 
-    @datetime.setter
-    def datetime(self, new_datetime):
-        if not isinstance(new_datetime, datetime):
-            raise TypeError("Datetime must be python.datetime, not %s" % type(new_datetime))
-        self._datetime = new_datetime
+    @match_datetime.setter
+    def match_datetime(self, new_match_datetime):
+        if not isinstance(new_match_datetime, datetime):
+            raise TypeError("Datetime must be python.datetime, not %s" % type(new_match_datetime))
+        self._match_datetime = new_match_datetime
 
+    #
     @property
     def shift(self):
         # аналогично с match_name
-        return datetime.now() - self.datetime
+        return (datetime.now() - self.match_datetime).total_seconds() / 60.
 
+    #
     @property
     def match_table(self):
         if self._match_table is None:
-            self._match_table = self._generateMatchTable()
+            self._match_table = self._generateMatchTable(self)
+            # self._match_table = self.generateMatchTable(self)
             if not isinstance(self._match_table, pd.DataFrame):
                 raise RuntimeError("Generated match_table is %s, not pd.DataFrame" % type(self._match_table))
             else:
                 _err = []
                 for col in ['match_name', 'time_shift', 'score1', 'score2',
                             'k_1_Fonbet', 'k_x_Fonbet', 'k_2_Fonbet',
-                            'k_1_LigaStavok', 'k_x_LigaStavok','k_2_LigaStavo']:
+                            'k_1_LigaStavok', 'k_x_LigaStavok','k_2_LigaStavok',
+                            '1', 'x', '2']:
                     if col not in self._match_table.columns:
                         _err.append(col)
                 if len(_err) > 0:

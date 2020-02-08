@@ -116,7 +116,7 @@ class MatchParser:
 
         Returns
         ----------
-        current_score : ` tuple of string `
+        teams : ` tuple of string `
             (team1, team2).
         """
         return tuple(
@@ -317,7 +317,7 @@ class MatchParser:
 
         odds = np.array(
             list(map(
-                lambda x: float(x) if len(x) > 0 else np.nan,
+                lambda x: float(x) if len(x) > 0 and x != '-' else np.nan,
                 [i.text_content().replace('\n', '')
                 for i in block.find_class('number')[n_k:]]
             ))).reshape((-1, n_k))

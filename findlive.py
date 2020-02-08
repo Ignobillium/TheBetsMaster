@@ -11,6 +11,8 @@ from match_parser import MatchParser
 from gecko_scraper import GeckoScraper
 from api import TBMApi
 
+from _config import config
+
 
 async def _findlive_lemma(_gs, match_name):
     sf  = 'select2-search__field'
@@ -37,7 +39,7 @@ async def _findlive_lemma(_gs, match_name):
     return _gs.driver.current_url
 
 
-async def findlive(match_name):
+async def findlive(match_name, port=config['port']):
     print('[ ] handle request findlive %s' % match_name)
     print('[ ] init gecko_scraper')
 
@@ -57,7 +59,7 @@ async def findlive(match_name):
     print('[i] %s => %s' % (live_url, match_name))
 
     print('[i] sending request parse_live to parsing_server')
-    api = TBMApi()
+    api = TBMApi(port)
     api.parse(live_url)
     print('[*] complete sending request parse_live to parsing_server')
 

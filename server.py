@@ -36,7 +36,7 @@ async def handle_request(reader, writer):
         param = s_requets[1]
 
         if 'live' in param:
-            loop.create_task(parse_live(param, dbw=TBMServerV.dbw))
+            loop.create_task(parse_live(param))
         elif 'league' in param:
             loop.create_task(parse_league(param))
         elif 'all' in param:
@@ -68,8 +68,8 @@ listening port %s''' % (datetime.now().strftime('%Y'), port)
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(levelname)-8s [%(asctime)s] %(message)s',
-        level=logging.DEBUG,
-        filename = 'server.log')
+        level=logging.INFO)
+        # filename = 'server.log')
 
     # TODO:
     #* check `Work in progress` up to start server
